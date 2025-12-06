@@ -40,7 +40,7 @@ services:
 
     volumes:
       # Persistent data storage
-      - ./data:/data
+      - /mnt/cephfs:/data
     networks:
       - telegram-network
     # Optional: Resource limits
@@ -67,7 +67,7 @@ services:
       VIEWER_USERNAME: ${VIEWER_USERNAME:-}
       VIEWER_PASSWORD: ${VIEWER_PASSWORD:-}
     volumes:
-      - ./data:/data
+      - /mnt/cephfs:/data
     networks:
       - telegram-network
   # Example: Restricted Channel Viewer (optional)
