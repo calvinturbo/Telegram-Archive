@@ -319,6 +319,43 @@ class Database:
         ))
         self.conn.commit()
     
+    def _serialize_raw_data(self, raw_data: Any) -> str:
+        """
+        Safely serialize raw_data to JSON, converting non-serializable objects to strings.
+        
+        Args:
+            raw_data: Data to serialize (dict, list, or other)
+            
+        Returns:
+            JSON string representation
+        """
+        if not raw_data:
+            return '{}'
+        
+        try:
+            return json.dumps(raw_data)
+        except (TypeError, ValueError) as e:
+            # If serialization fails, try to convert objects to strings
+            logger.warning(f"Failed to serialize raw_data directly: {e}. Attempting to convert objects...")
+            try:
+                # Recursively convert non-serializable objects to strings
+                def convert_to_serializable(obj):
+                    if isinstance(obj, dict):
+                        return {k: convert_to_serializable(v) for k, v in obj.items()}
+                    elif isinstance(obj, list):
+                        return [convert_to_serializable(item) for item in obj]
+                    elif isinstance(obj, (str, int, float, bool, type(None))):
+                        return obj
+                    else:
+                        # Convert any other object to string
+                        return str(obj)
+                
+                serializable_data = convert_to_serializable(raw_data)
+                return json.dumps(serializable_data)
+            except Exception as e2:
+                logger.error(f"Failed to serialize raw_data even after conversion: {e2}. Storing empty dict.")
+                return '{}'
+    
     def insert_message(self, message_data: Dict[str, Any]):
         """
         Insert a message record.
@@ -346,10 +383,10 @@ class Database:
             message_data.get('media_type'),
             message_data.get('media_id'),
             message_data.get('media_path'),
-           json.dumps(message_data.get('raw_data', {}))
+            self._serialize_raw_data(message_data.get('raw_data', {}))
         ))
         self.conn.commit()
-    
+
     @retry_on_locked(max_retries=5, initial_delay=0.1, max_delay=2.0)
     def insert_messages_batch(self, messages_data: List[Dict[str, Any]]):
         """
@@ -382,7 +419,7 @@ class Database:
                 m.get('media_type'),
                 m.get('media_id'),
                 m.get('media_path'),
-                json.dumps(m.get('raw_data', {})),
+                self._serialize_raw_data(m.get('raw_data', {})),
                 m.get('is_outgoing', 0)
             ) for m in messages_data
         ])

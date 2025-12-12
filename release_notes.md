@@ -1,5 +1,17 @@
 # Release Notes
 
+## v2.2.18
+### Fixes
+- **JSON Serialization Fix for Polls:** Fixed `TypeError: Object of type TextWithEntities is not JSON serializable` error when backing up messages with polls. Poll questions and answer text fields that are `TextWithEntities` objects are now properly converted to strings before JSON serialization.
+- **Robust JSON Serialization:** Added `_serialize_raw_data()` helper method that safely handles non-serializable objects in `raw_data` by recursively converting them to strings, preventing future serialization errors.
+
+### Technical Details
+- Added `_text_with_entities_to_string()` helper to convert `TextWithEntities` objects to plain strings
+- Updated poll processing to convert `poll.question` and answer `text` fields from `TextWithEntities` to strings
+- Added fallback serialization that converts any non-serializable objects to strings with proper error handling
+
+---
+
 ## v2.2.17
 ### Fixes
 - **Database Lock Resilience:** Added automatic retry mechanism with exponential backoff for all database write operations. Operations now retry up to 5 times with increasing delays (0.1s to 2.0s) when encountering "database is locked" errors. This significantly improves resilience when the backup process and web viewer access the database concurrently.

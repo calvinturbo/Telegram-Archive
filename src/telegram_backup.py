@@ -16,7 +16,8 @@ from telethon.tl.types import (
     User, Chat, Channel, Message,
     MessageMediaPhoto, MessageMediaDocument,
     MessageMediaContact,
-    MessageMediaGeo, MessageMediaPoll
+    MessageMediaGeo, MessageMediaPoll,
+    TextWithEntities
 )
 
 from .config import Config
@@ -439,6 +440,26 @@ class TelegramBackup:
             
         return None
 
+    def _text_with_entities_to_string(self, text_obj) -> str:
+        """
+        Convert TextWithEntities or string to a plain string.
+        
+        Args:
+            text_obj: TextWithEntities object or string
+            
+        Returns:
+            Plain string representation
+        """
+        if text_obj is None:
+            return ''
+        if isinstance(text_obj, str):
+            return text_obj
+        if isinstance(text_obj, TextWithEntities):
+            # Extract the text from TextWithEntities
+            return text_obj.text if hasattr(text_obj, 'text') else str(text_obj)
+        # Fallback for any other type
+        return str(text_obj)
+
     async def _process_message(self, message: Message, chat_id: int) -> Dict:
         """
         Process and save a single message.
@@ -508,11 +529,13 @@ class TelegramBackup:
                         logger.warning(f"Error parsing poll results: {e}")
 
                 # Store poll structure
+                # Convert TextWithEntities to strings for JSON serialization
+                question_text = self._text_with_entities_to_string(getattr(poll, 'question', ''))
                 message_data['raw_data']['poll'] = {
                     'id': getattr(poll, 'id', None),
-                    'question': getattr(poll, 'question', ''),
+                    'question': question_text,
                     'answers': [{
-                        'text': getattr(a, 'text', ''), 
+                        'text': self._text_with_entities_to_string(getattr(a, 'text', '')), 
                         'option': base64.b64encode(a.option).decode('ascii')
                     } for a in poll.answers],
                     'closed': poll.closed,
