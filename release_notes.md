@@ -1,5 +1,19 @@
 # Release Notes
 
+## v2.2.17
+### Fixes
+- **Database Lock Resilience:** Added automatic retry mechanism with exponential backoff for all database write operations. Operations now retry up to 5 times with increasing delays (0.1s to 2.0s) when encountering "database is locked" errors. This significantly improves resilience when the backup process and web viewer access the database concurrently.
+- **Increased Database Timeouts:** Default database timeout increased from 30s to 60s, and `busy_timeout` PRAGMA set to match. This provides more time for SQLite to resolve lock contention, especially on systems with high concurrent access.
+- **Database Performance Optimizations:** Added `PRAGMA synchronous=NORMAL` (safe with WAL mode) and increased cache size to 64MB for better performance with large databases.
+
+### Technical Details
+- Retry decorator (`@retry_on_locked`) automatically handles `sqlite3.OperationalError` with "locked" messages
+- All critical write operations (`upsert_chat`, `insert_messages_batch`, `insert_reactions`, `update_sync_status`) now have automatic retry
+- Exponential backoff prevents overwhelming the database with rapid retries
+- WAL mode already enabled for concurrent read/write support
+
+---
+
 ## v2.2.16
 ### Fixes
 - **Timezone Data Bundle & Default TZ:** Load `moment-timezone-with-data-1970-2030.min.js` (full timezone data bundle) and set the default timezone from `VIEWER_TIMEZONE` so conversions work reliably (e.g., Europe/Madrid). This fixes the "Moment Timezone has no data for Europe/Madrid" error.

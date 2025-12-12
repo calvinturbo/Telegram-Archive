@@ -9,23 +9,72 @@ import json
 import os
 import shutil
 import glob
+import time
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Callable
+from functools import wraps
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
+def retry_on_locked(max_retries: int = 5, initial_delay: float = 0.1, max_delay: float = 2.0, backoff_factor: float = 2.0):
+    """
+    Decorator to retry database operations on OperationalError (database locked).
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay in seconds before first retry
+        max_delay: Maximum delay between retries in seconds
+        backoff_factor: Multiplier for exponential backoff
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            delay = initial_delay
+            last_exception = None
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(self, *args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    if 'locked' not in str(e).lower():
+                        # Not a lock error, re-raise immediately
+                        raise
+                    
+                    last_exception = e
+                    if attempt < max_retries:
+                        logger.warning(
+                            f"Database locked on {func.__name__}, attempt {attempt + 1}/{max_retries + 1}. "
+                            f"Retrying in {delay:.2f}s..."
+                        )
+                        time.sleep(delay)
+                        delay = min(delay * backoff_factor, max_delay)
+                    else:
+                        logger.error(
+                            f"Database locked on {func.__name__} after {max_retries + 1} attempts. "
+                            f"Giving up."
+                        )
+                        raise
+            
+            # Should never reach here, but just in case
+            if last_exception:
+                raise last_exception
+                
+        return wrapper
+    return decorator
+
+
 class Database:
     """SQLite database manager for Telegram backup data."""
     
-    def __init__(self, db_path: str, timeout: float = 30.0):
+    def __init__(self, db_path: str, timeout: float = 60.0):
         """
         Initialize database connection and create schema if needed.
         
         Args:
             db_path: Path to SQLite database file
-            timeout: Connection timeout in seconds (default 30s)
+            timeout: Connection timeout in seconds (default 60s, increased for better resilience)
         """
         self.db_path = db_path
         # timeout: wait up to N seconds if database is locked
@@ -35,10 +84,16 @@ class Database:
         # Enable WAL mode for better concurrent read/write performance
         # WAL allows readers to proceed while a writer is active
         self.conn.execute('PRAGMA journal_mode=WAL')
-        self.conn.execute('PRAGMA busy_timeout=30000')  # 30 second busy timeout
+        # Increase busy_timeout to 60 seconds (60000ms) for better resilience
+        busy_timeout_ms = int(timeout * 1000)
+        self.conn.execute(f'PRAGMA busy_timeout={busy_timeout_ms}')
+        
+        # Additional optimizations for concurrent access
+        self.conn.execute('PRAGMA synchronous=NORMAL')  # Faster than FULL, still safe with WAL
+        self.conn.execute('PRAGMA cache_size=-64000')  # 64MB cache for better performance
         
         self._create_schema()
-        logger.info(f"Database initialized at {db_path} (WAL mode enabled)")
+        logger.info(f"Database initialized at {db_path} (WAL mode enabled, timeout={timeout}s, busy_timeout={busy_timeout_ms}ms)")
     
     def _create_schema(self):
         """Create database schema if it doesn't exist."""
@@ -194,6 +249,7 @@ class Database:
             logger.info(f"Backfilled is_outgoing=1 for {cursor.rowcount} messages from owner {owner_id}")
             self.conn.commit()
     
+    @retry_on_locked(max_retries=5, initial_delay=0.1, max_delay=2.0)
     def upsert_chat(self, chat_data: Dict[str, Any]) -> int:
         """
         Insert or update a chat record.
@@ -294,6 +350,7 @@ class Database:
         ))
         self.conn.commit()
     
+    @retry_on_locked(max_retries=5, initial_delay=0.1, max_delay=2.0)
     def insert_messages_batch(self, messages_data: List[Dict[str, Any]]):
         """
         Insert multiple message records in a single transaction.
@@ -362,6 +419,7 @@ class Database:
         ))
         self.conn.commit()
     
+    @retry_on_locked(max_retries=5, initial_delay=0.1, max_delay=2.0)
     def insert_reactions(self, message_id: int, chat_id: int, reactions: List[Dict[str, Any]]):
         """
         Insert reactions for a message.
@@ -430,6 +488,7 @@ class Database:
         row = cursor.fetchone()
         return row['last_message_id'] if row else 0
     
+    @retry_on_locked(max_retries=5, initial_delay=0.1, max_delay=2.0)
     def update_sync_status(self, chat_id: int, last_message_id: int, message_count: int):
         """
         Update sync status for a chat.
