@@ -64,9 +64,9 @@ services:
     networks:
       - telegram-network
     # Uncomment to use PostgreSQL
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+    depends_on:
+     postgres:
+       condition: service_healthy
     # Optional: Resource limits
     # deploy:
     #   resources:
@@ -105,9 +105,9 @@ services:
     networks:
       - telegram-network
     # Uncomment to use PostgreSQL
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+    depends_on:
+     postgres:
+       condition: service_healthy
 
   # Example: Restricted Channel Viewer (optional)
   # Use this to share specific channels publicly with authentication
@@ -133,23 +133,23 @@ services:
   # Uncomment to use PostgreSQL instead of SQLite
   # Also set DB_TYPE=postgresql in your .env file
   #
-  # postgres:
-  #   image: postgres:18-alpine
-  #   container_name: telegram-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USER:-telegram}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-  #     POSTGRES_DB: ${POSTGRES_DB:-telegram_backup}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql
-  #   networks:
-  #     - telegram-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-telegram} -d ${POSTGRES_DB:-telegram_backup}"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  postgres:
+     image: postgres:18-alpine
+     container_name: telegram-postgres
+     restart: unless-stopped
+     environment:
+       POSTGRES_USER: ${POSTGRES_USER:-telegram}
+       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+       POSTGRES_DB: ${POSTGRES_DB:-telegram_backup}
+     volumes:
+       - /mnt/cephfs/telegram-postgres:/var/lib/postgresql
+     networks:
+       - telegram-network
+     healthcheck:
+       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-telegram} -d ${POSTGRES_DB:-telegram_backup}"]
+       interval: 10s
+       timeout: 5s
+       retries: 5
 
 networks:
   telegram-network:
