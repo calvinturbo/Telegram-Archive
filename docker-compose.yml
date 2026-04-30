@@ -24,15 +24,15 @@ services:
       # Backup Configuration
       BACKUP_PATH: /data/backups
       DOWNLOAD_MEDIA: ${DOWNLOAD_MEDIA:-true}
-      MAX_MEDIA_SIZE_MB: ${MAX_MEDIA_SIZE_MB:-100}
+      MAX_MEDIA_SIZE_MB: ${MAX_MEDIA_SIZE_MB:-10000}
       BATCH_SIZE: ${BATCH_SIZE:-100}
       CHECKPOINT_INTERVAL: ${CHECKPOINT_INTERVAL:-1}
-      # DEDUPLICATE_MEDIA: ${DEDUPLICATE_MEDIA:-true}
+      DEDUPLICATE_MEDIA: ${DEDUPLICATE_MEDIA:-true}
       # PRIORITY_CHAT_IDS: ${PRIORITY_CHAT_IDS:-}
       # SKIP_MEDIA_CHAT_IDS: ${SKIP_MEDIA_CHAT_IDS:-}
       # SKIP_MEDIA_DELETE_EXISTING: ${SKIP_MEDIA_DELETE_EXISTING:-true}
       SKIP_TOPIC_IDS: ${SKIP_TOPIC_IDS:-}
-      # STATS_CALCULATION_HOUR: ${STATS_CALCULATION_HOUR:-3}
+      STATS_CALCULATION_HOUR: ${STATS_CALCULATION_HOUR:-3}
 
       # =======================================================================
       # CHAT FILTERING - Choose ONE mode:
@@ -94,7 +94,7 @@ services:
 
     volumes:
       # Persistent data storage
-      - ./data:/data
+      - '/mnt/cephfs:/data'
     networks:
       - telegram-network
     # Security hardening
@@ -124,9 +124,7 @@ services:
     container_name: telegram-viewer
     restart: unless-stopped
     ports:
-      # Bind to localhost by default. Put this behind a reverse proxy with auth
-      # configured before exposing it publicly.
-      - "127.0.0.1:8000:8000"
+      - '8795:8000'
     environment:
       BACKUP_PATH: /data/backups
 
@@ -174,7 +172,7 @@ services:
     volumes:
       # SQLite needs write access for WAL journal files (.db-wal, .db-shm).
       # Use :ro only if you are using PostgreSQL as the database backend.
-      - ./data:/data
+      - '/mnt/cephfs:/data'
     networks:
       - telegram-network
     # Security hardening
