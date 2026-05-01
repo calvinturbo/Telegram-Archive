@@ -222,7 +222,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-telegram_backup}
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - '/mnt/cephfs/postgres-data:/var/lib/postgresql'
     networks:
       - telegram-network
     healthcheck:
