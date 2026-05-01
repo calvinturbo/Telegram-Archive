@@ -74,11 +74,11 @@ services:
       # ENABLE_LISTENER is the master switch — when false, all LISTEN_* vars are ignored
       ENABLE_LISTENER: ${ENABLE_LISTENER:-false}
       # Granular listener controls (only apply when ENABLE_LISTENER=true):
-      # LISTEN_EDITS: ${LISTEN_EDITS:-true}
-      # LISTEN_DELETIONS: ${LISTEN_DELETIONS:-false}
-      # LISTEN_NEW_MESSAGES: ${LISTEN_NEW_MESSAGES:-true}
-      # LISTEN_NEW_MESSAGES_MEDIA: ${LISTEN_NEW_MESSAGES_MEDIA:-false}
-      # LISTEN_CHAT_ACTIONS: ${LISTEN_CHAT_ACTIONS:-true}
+      LISTEN_EDITS: ${LISTEN_EDITS:-true}
+      LISTEN_DELETIONS: ${LISTEN_DELETIONS:-false}
+      LISTEN_NEW_MESSAGES: ${LISTEN_NEW_MESSAGES:-true}
+      LISTEN_NEW_MESSAGES_MEDIA: ${LISTEN_NEW_MESSAGES_MEDIA:-false}
+      LISTEN_CHAT_ACTIONS: ${LISTEN_CHAT_ACTIONS:-true}
 
       # Mass operation protection (only applies when ENABLE_LISTENER=true)
       # MASS_OPERATION_THRESHOLD: ${MASS_OPERATION_THRESHOLD:-10}
@@ -107,9 +107,9 @@ services:
     security_opt:
       - no-new-privileges:true
     # Uncomment to use PostgreSQL
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+    depends_on:
+       postgres:
+         condition: service_healthy
     # Optional: Resource limits
     # deploy:
     #   resources:
@@ -185,9 +185,9 @@ services:
     security_opt:
       - no-new-privileges:true
     # Uncomment to use PostgreSQL
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+    depends_on:
+     postgres:
+       condition: service_healthy
 
   # Example: Restricted Channel Viewer (optional)
   # Use this to share specific channels publicly with authentication
@@ -213,23 +213,23 @@ services:
   # Uncomment to use PostgreSQL instead of SQLite
   # Also set DB_TYPE=postgresql in your .env file
   #
-  # postgres:
-  #   image: postgres:18-alpine
-  #   container_name: telegram-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USER:-telegram}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-  #     POSTGRES_DB: ${POSTGRES_DB:-telegram_backup}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql
-  #   networks:
-  #     - telegram-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-telegram} -d ${POSTGRES_DB:-telegram_backup}"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+postgres:
+  image: postgres:18-alpine
+  container_name: telegram-postgres
+  restart: unless-stopped
+  environment:
+    POSTGRES_USER: ${POSTGRES_USER:-telegram}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    POSTGRES_DB: ${POSTGRES_DB:-telegram_backup}
+  volumes:
+    - postgres_data:/var/lib/postgresql
+  networks:
+    - telegram-network
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-telegram} -d ${POSTGRES_DB:-telegram_backup}"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
 
 networks:
   telegram-network:
