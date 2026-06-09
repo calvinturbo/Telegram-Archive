@@ -1,6 +1,6 @@
 services:
   telegram-backup:
-    image: drumsergio/telegram-archive:7.13.0
+    image: drumsergio/telegram-archive:v7.14.0
     container_name: telegram-backup
     restart: unless-stopped
     command: ["python", "-m", "src", "schedule"]
