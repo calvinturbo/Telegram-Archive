@@ -121,7 +121,7 @@ services:
     #       memory: 512M
 
   telegram-viewer:
-    image: drumsergio/telegram-archive-viewer:7.7.0
+    image: drumsergio/telegram-archive-viewer:v7.14.0
     container_name: telegram-viewer
     restart: unless-stopped
     ports:
